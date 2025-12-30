@@ -1,7 +1,7 @@
 blueprint:
   name: Hue Switch Control
   description: >
-    Multi-press + hold controller for Philips Hue Dimmer Switch (Hue integration).
+    v1 Multi-press + hold controller for Philips Hue Dimmer Switch (Hue integration).
     - Press is mapped to hue_event type=initial_press (short_release ignored)
     - Hold is mapped to hue_event type=long_press (repeat + long_release ignored)
     - Multi-press is detected per device + per button within a time window (max 4).
