@@ -6,6 +6,7 @@ blueprint:
     - Hold is mapped to hue_event type=long_press (repeat + long_release ignored)
     - Multi-press is detected per-device + per-button using a timer window.
   domain: automation
+  source_url: https://raw.githubusercontent.com/robbartn/hue_switch_control/refs/heads/main/hue_switch_control.yaml
 
   input:
     switches:
