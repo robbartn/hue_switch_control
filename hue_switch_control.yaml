@@ -4,117 +4,117 @@ blueprint:
     Multi-press + hold controller for Philips Hue Dimmer Switch (Hue integration).
     - Press is mapped to hue_event type=initial_press (short_release ignored)
     - Hold is mapped to hue_event type=long_press (repeat + long_release ignored)
-    - Multi-press is detected per-device + per-button using a timer window.
+    - Multi-press is detected per device + per button within a time window (max 4).
   domain: automation
   source_url: https://raw.githubusercontent.com/robbartn/hue_switch_control/refs/heads/main/hue_switch_control.yaml
 
-  input:
-    switches:
-      name: Hue dimmer switch devices
-      description: Select one or more Hue dimmer switches.
-      selector:
-        device:
-          multiple: true
-          filter:
-            - integration: hue
-              manufacturer: Signify Netherlands B.V.
-              model: Hue dimmer switch
+input:
+  switches:
+    name: Hue dimmer switch devices
+    description: Select one or more Hue dimmer switches.
+    selector:
+      device:
+        multiple: true
+        filter:
+          - integration: hue
+            manufacturer: Signify Netherlands B.V.
+            model: Hue dimmer switch
 
-    multi_press_window:
-      name: Multi press window (seconds)
-      description: Time window to collect repeated presses (per device + button).
-      default: 10
-      selector:
-        number:
-          min: 1
-          max: 20
-          step: 1
-          mode: slider
-          unit_of_measurement: seconds
+  multi_press_window:
+    name: Multi press window (seconds)
+    description: Time window to collect repeated presses (per device + button).
+    default: 10
+    selector:
+      number:
+        min: 1
+        max: 20
+        step: 1
+        mode: slider
+        unit_of_measurement: seconds
 
-    on_press_1:
-      name: On - Press 1
-      default: []
-      selector: { action: {} }
-    on_press_2:
-      name: On - Press 2
-      default: []
-      selector: { action: {} }
-    on_press_3:
-      name: On - Press 3
-      default: []
-      selector: { action: {} }
-    on_press_4:
-      name: On - Press 4
-      default: []
-      selector: { action: {} }
-    on_hold:
-      name: On - Hold
-      default: []
-      selector: { action: {} }
+  on_press_1:
+    name: On - Press 1
+    default: []
+    selector: { action: {} }
+  on_press_2:
+    name: On - Press 2
+    default: []
+    selector: { action: {} }
+  on_press_3:
+    name: On - Press 3
+    default: []
+    selector: { action: {} }
+  on_press_4:
+    name: On - Press 4
+    default: []
+    selector: { action: {} }
+  on_hold:
+    name: On - Hold
+    default: []
+    selector: { action: {} }
 
-    up_press_1:
-      name: Up - Press 1
-      default: []
-      selector: { action: {} }
-    up_press_2:
-      name: Up - Press 2
-      default: []
-      selector: { action: {} }
-    up_press_3:
-      name: Up - Press 3
-      default: []
-      selector: { action: {} }
-    up_press_4:
-      name: Up - Press 4
-      default: []
-      selector: { action: {} }
-    up_hold:
-      name: Up - Hold
-      default: []
-      selector: { action: {} }
+  up_press_1:
+    name: Up - Press 1
+    default: []
+    selector: { action: {} }
+  up_press_2:
+    name: Up - Press 2
+    default: []
+    selector: { action: {} }
+  up_press_3:
+    name: Up - Press 3
+    default: []
+    selector: { action: {} }
+  up_press_4:
+    name: Up - Press 4
+    default: []
+    selector: { action: {} }
+  up_hold:
+    name: Up - Hold
+    default: []
+    selector: { action: {} }
 
-    down_press_1:
-      name: Down - Press 1
-      default: []
-      selector: { action: {} }
-    down_press_2:
-      name: Down - Press 2
-      default: []
-      selector: { action: {} }
-    down_press_3:
-      name: Down - Press 3
-      default: []
-      selector: { action: {} }
-    down_press_4:
-      name: Down - Press 4
-      default: []
-      selector: { action: {} }
-    down_hold:
-      name: Down - Hold
-      default: []
-      selector: { action: {} }
+  down_press_1:
+    name: Down - Press 1
+    default: []
+    selector: { action: {} }
+  down_press_2:
+    name: Down - Press 2
+    default: []
+    selector: { action: {} }
+  down_press_3:
+    name: Down - Press 3
+    default: []
+    selector: { action: {} }
+  down_press_4:
+    name: Down - Press 4
+    default: []
+    selector: { action: {} }
+  down_hold:
+    name: Down - Hold
+    default: []
+    selector: { action: {} }
 
-    off_press_1:
-      name: Off - Press 1
-      default: []
-      selector: { action: {} }
-    off_press_2:
-      name: Off - Press 2
-      default: []
-      selector: { action: {} }
-    off_press_3:
-      name: Off - Press 3
-      default: []
-      selector: { action: {} }
-    off_press_4:
-      name: Off - Press 4
-      default: []
-      selector: { action: {} }
-    off_hold:
-      name: Off - Hold
-      default: []
-      selector: { action: {} }
+  off_press_1:
+    name: Off - Press 1
+    default: []
+    selector: { action: {} }
+  off_press_2:
+    name: Off - Press 2
+    default: []
+    selector: { action: {} }
+  off_press_3:
+    name: Off - Press 3
+    default: []
+    selector: { action: {} }
+  off_press_4:
+    name: Off - Press 4
+    default: []
+    selector: { action: {} }
+  off_hold:
+    name: Off - Hold
+    default: []
+    selector: { action: {} }
 
 mode: parallel
 max: 50
@@ -126,35 +126,6 @@ trigger:
 variables:
   switches: !input switches
   window_s: !input multi_press_window
-
-  # Action maps (button -> press_count -> sequence)
-  press_actions:
-    on:
-      1: !input on_press_1
-      2: !input on_press_2
-      3: !input on_press_3
-      4: !input on_press_4
-    up:
-      1: !input up_press_1
-      2: !input up_press_2
-      3: !input up_press_3
-      4: !input up_press_4
-    down:
-      1: !input down_press_1
-      2: !input down_press_2
-      3: !input down_press_3
-      4: !input down_press_4
-    off:
-      1: !input off_press_1
-      2: !input off_press_2
-      3: !input off_press_3
-      4: !input off_press_4
-
-  hold_actions:
-    on: !input on_hold
-    up: !input up_hold
-    down: !input down_hold
-    off: !input off_hold
 
 action:
   - variables:
@@ -178,31 +149,41 @@ action:
 
   - condition: template
     value_template: >-
-      {{ device_id != '' and device_id in switches and button != 'unknown' }}
+      {{ device_id != '' and (switches | default([])) is iterable and device_id in switches and button != 'unknown' }}
 
   - choose:
-      # Hold (long_press)
+      # Hold (long_press). Ignore repeat and long_release.
       - conditions:
           - condition: template
             value_template: "{{ press_type == 'long_press' }}"
         sequence:
           - choose:
-              - conditions: "{{ button == 'on' }}"
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button == 'on' }}"
                 sequence: !input on_hold
-              - conditions: "{{ button == 'up' }}"
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button == 'up' }}"
                 sequence: !input up_hold
-              - conditions: "{{ button == 'down' }}"
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button == 'down' }}"
                 sequence: !input down_hold
-              - conditions: "{{ button == 'off' }}"
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button == 'off' }}"
                 sequence: !input off_hold
 
-      # Press (initial_press) with multi-press window
+      # Press (initial_press). Ignore short_release.
       - conditions:
           - condition: template
             value_template: "{{ press_type == 'initial_press' }}"
         sequence:
           - variables:
               count: 1
+
+          # Count additional presses of the same device + same button within the window (max 4)
           - repeat:
               while:
                 - condition: template
@@ -212,23 +193,94 @@ action:
                     - platform: event
                       event_type: hue_event
                       event_data:
-                        device_id: "{{ device_id }}"
                         type: initial_press
-                        subtype: "{{ subtype_raw }}"
                   timeout:
                     seconds: "{{ window_s }}"
                   continue_on_timeout: false
+
+                - condition: template
+                  value_template: >-
+                    {{
+                      wait.trigger is not none and
+                      wait.trigger.event.data.device_id == device_id and
+                      wait.trigger.event.data.subtype == subtype_raw
+                    }}
+
                 - variables:
                     count: "{{ count + 1 }}"
-          - choose:
-              - conditions: "{{ button == 'on' }}"
-                sequence: "{{ press_actions.on[count] }}"
-              - conditions: "{{ button == 'up' }}"
-                sequence: "{{ press_actions.up[count] }}"
-              - conditions: "{{ button == 'down' }}"
-                sequence: "{{ press_actions.down[count] }}"
-              - conditions: "{{ button == 'off' }}"
-                sequence: "{{ press_actions.off[count] }}"
 
-    # Ignore everything else (repeat, short_release, long_release, unknown)
+          # Execute actions for the final count
+          - choose:
+              # ON
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button == 'on' and count == 1 }}"
+                sequence: !input on_press_1
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button == 'on' and count == 2 }}"
+                sequence: !input on_press_2
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button == 'on' and count == 3 }}"
+                sequence: !input on_press_3
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button == 'on' and count == 4 }}"
+                sequence: !input on_press_4
+
+              # UP
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button == 'up' and count == 1 }}"
+                sequence: !input up_press_1
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button == 'up' and count == 2 }}"
+                sequence: !input up_press_2
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button == 'up' and count == 3 }}"
+                sequence: !input up_press_3
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button == 'up' and count == 4 }}"
+                sequence: !input up_press_4
+
+              # DOWN
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button == 'down' and count == 1 }}"
+                sequence: !input down_press_1
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button == 'down' and count == 2 }}"
+                sequence: !input down_press_2
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button == 'down' and count == 3 }}"
+                sequence: !input down_press_3
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button == 'down' and count == 4 }}"
+                sequence: !input down_press_4
+
+              # OFF
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button == 'off' and count == 1 }}"
+                sequence: !input off_press_1
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button == 'off' and count == 2 }}"
+                sequence: !input off_press_2
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button == 'off' and count == 3 }}"
+                sequence: !input off_press_3
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button == 'off' and count == 4 }}"
+                sequence: !input off_press_4
+
     default: []
