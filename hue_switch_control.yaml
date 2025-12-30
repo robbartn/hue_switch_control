@@ -1,0 +1,233 @@
+blueprint:
+  name: Hue Switch Control
+  description: >
+    Multi-press + hold controller for Philips Hue Dimmer Switch (Hue integration).
+    - Press is mapped to hue_event type=initial_press (short_release ignored)
+    - Hold is mapped to hue_event type=long_press (repeat + long_release ignored)
+    - Multi-press is detected per-device + per-button using a timer window.
+  domain: automation
+
+  input:
+    switches:
+      name: Hue dimmer switch devices
+      description: Select one or more Hue dimmer switches.
+      selector:
+        device:
+          multiple: true
+          filter:
+            - integration: hue
+              manufacturer: Signify Netherlands B.V.
+              model: Hue dimmer switch
+
+    multi_press_window:
+      name: Multi press window (seconds)
+      description: Time window to collect repeated presses (per device + button).
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 20
+          step: 1
+          mode: slider
+          unit_of_measurement: seconds
+
+    on_press_1:
+      name: On - Press 1
+      default: []
+      selector: { action: {} }
+    on_press_2:
+      name: On - Press 2
+      default: []
+      selector: { action: {} }
+    on_press_3:
+      name: On - Press 3
+      default: []
+      selector: { action: {} }
+    on_press_4:
+      name: On - Press 4
+      default: []
+      selector: { action: {} }
+    on_hold:
+      name: On - Hold
+      default: []
+      selector: { action: {} }
+
+    up_press_1:
+      name: Up - Press 1
+      default: []
+      selector: { action: {} }
+    up_press_2:
+      name: Up - Press 2
+      default: []
+      selector: { action: {} }
+    up_press_3:
+      name: Up - Press 3
+      default: []
+      selector: { action: {} }
+    up_press_4:
+      name: Up - Press 4
+      default: []
+      selector: { action: {} }
+    up_hold:
+      name: Up - Hold
+      default: []
+      selector: { action: {} }
+
+    down_press_1:
+      name: Down - Press 1
+      default: []
+      selector: { action: {} }
+    down_press_2:
+      name: Down - Press 2
+      default: []
+      selector: { action: {} }
+    down_press_3:
+      name: Down - Press 3
+      default: []
+      selector: { action: {} }
+    down_press_4:
+      name: Down - Press 4
+      default: []
+      selector: { action: {} }
+    down_hold:
+      name: Down - Hold
+      default: []
+      selector: { action: {} }
+
+    off_press_1:
+      name: Off - Press 1
+      default: []
+      selector: { action: {} }
+    off_press_2:
+      name: Off - Press 2
+      default: []
+      selector: { action: {} }
+    off_press_3:
+      name: Off - Press 3
+      default: []
+      selector: { action: {} }
+    off_press_4:
+      name: Off - Press 4
+      default: []
+      selector: { action: {} }
+    off_hold:
+      name: Off - Hold
+      default: []
+      selector: { action: {} }
+
+mode: parallel
+max: 50
+
+trigger:
+  - platform: event
+    event_type: hue_event
+
+variables:
+  switches: !input switches
+  window_s: !input multi_press_window
+
+  # Action maps (button -> press_count -> sequence)
+  press_actions:
+    on:
+      1: !input on_press_1
+      2: !input on_press_2
+      3: !input on_press_3
+      4: !input on_press_4
+    up:
+      1: !input up_press_1
+      2: !input up_press_2
+      3: !input up_press_3
+      4: !input up_press_4
+    down:
+      1: !input down_press_1
+      2: !input down_press_2
+      3: !input down_press_3
+      4: !input down_press_4
+    off:
+      1: !input off_press_1
+      2: !input off_press_2
+      3: !input off_press_3
+      4: !input off_press_4
+
+  hold_actions:
+    on: !input on_hold
+    up: !input up_hold
+    down: !input down_hold
+    off: !input off_hold
+
+action:
+  - variables:
+      d: "{{ trigger.event.data }}"
+      device_id: "{{ d.device_id | default('', true) }}"
+      press_type: "{{ d.type | default('', true) }}"
+      subtype_raw: "{{ d.subtype | default('', true) }}"
+      button: >-
+        {% set s = subtype_raw %}
+        {% if s in [1, '1', 'on', 'turn_on', 'button_1'] %}
+          on
+        {% elif s in [2, '2', 'up', 'dim_up', 'button_2'] %}
+          up
+        {% elif s in [3, '3', 'down', 'dim_down', 'button_3'] %}
+          down
+        {% elif s in [4, '4', 'off', 'turn_off', 'button_4'] %}
+          off
+        {% else %}
+          unknown
+        {% endif %}
+
+  - condition: template
+    value_template: >-
+      {{ device_id != '' and device_id in switches and button != 'unknown' }}
+
+  - choose:
+      # Hold (long_press)
+      - conditions:
+          - condition: template
+            value_template: "{{ press_type == 'long_press' }}"
+        sequence:
+          - choose:
+              - conditions: "{{ button == 'on' }}"
+                sequence: !input on_hold
+              - conditions: "{{ button == 'up' }}"
+                sequence: !input up_hold
+              - conditions: "{{ button == 'down' }}"
+                sequence: !input down_hold
+              - conditions: "{{ button == 'off' }}"
+                sequence: !input off_hold
+
+      # Press (initial_press) with multi-press window
+      - conditions:
+          - condition: template
+            value_template: "{{ press_type == 'initial_press' }}"
+        sequence:
+          - variables:
+              count: 1
+          - repeat:
+              while:
+                - condition: template
+                  value_template: "{{ count < 4 }}"
+              sequence:
+                - wait_for_trigger:
+                    - platform: event
+                      event_type: hue_event
+                      event_data:
+                        device_id: "{{ device_id }}"
+                        type: initial_press
+                        subtype: "{{ subtype_raw }}"
+                  timeout:
+                    seconds: "{{ window_s }}"
+                  continue_on_timeout: false
+                - variables:
+                    count: "{{ count + 1 }}"
+          - choose:
+              - conditions: "{{ button == 'on' }}"
+                sequence: "{{ press_actions.on[count] }}"
+              - conditions: "{{ button == 'up' }}"
+                sequence: "{{ press_actions.up[count] }}"
+              - conditions: "{{ button == 'down' }}"
+                sequence: "{{ press_actions.down[count] }}"
+              - conditions: "{{ button == 'off' }}"
+                sequence: "{{ press_actions.off[count] }}"
+
+    # Ignore everything else (repeat, short_release, long_release, unknown)
+    default: []
