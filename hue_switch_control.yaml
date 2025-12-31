@@ -8,33 +8,133 @@ blueprint:
   domain: automation
   source_url: https://raw.githubusercontent.com/robbartn/hue_switch_control/refs/heads/main/hue_switch_control.yaml
 
-input:
-  switches: { name: "Hue dimmer switch devices", description: "Select one or more Hue dimmer switches.", selector: { device: { multiple: true, filter: [ { integration: hue, manufacturer: "Signify Netherlands B.V.", model: "Hue dimmer switch" } ] } } }
-  multi_press_window: { name: "Multi press window (seconds)", description: "Time window to collect repeated presses (per device + button).", default: 10, selector: { number: { min: 1, max: 20, step: 1, mode: slider, unit_of_measurement: seconds } } }
+  input:
+    switches:
+      name: Hue dimmer switch devices
+      description: Select one or more Hue dimmer switches.
+      selector:
+        device:
+          multiple: true
+          filter:
+            - integration: hue
+              manufacturer: "Signify Netherlands B.V."
+              model: "Hue dimmer switch"
 
-  on_press_1: { name: "On - Press 1", default: [], selector: { action: {} } }
-  on_press_2: { name: "On - Press 2", default: [], selector: { action: {} } }
-  on_press_3: { name: "On - Press 3", default: [], selector: { action: {} } }
-  on_press_4: { name: "On - Press 4", default: [], selector: { action: {} } }
-  on_hold: { name: "On - Hold", default: [], selector: { action: {} } }
+    multi_press_window:
+      name: Multi press window (seconds)
+      description: Time window to collect repeated presses (per device + button).
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 20
+          step: 1
+          mode: slider
+          unit_of_measurement: seconds
 
-  up_press_1: { name: "Up - Press 1", default: [], selector: { action: {} } }
-  up_press_2: { name: "Up - Press 2", default: [], selector: { action: {} } }
-  up_press_3: { name: "Up - Press 3", default: [], selector: { action: {} } }
-  up_press_4: { name: "Up - Press 4", default: [], selector: { action: {} } }
-  up_hold: { name: "Up - Hold", default: [], selector: { action: {} } }
+    on_press_1:
+      name: On - Press 1
+      default: []
+      selector:
+        action: {}
+    on_press_2:
+      name: On - Press 2
+      default: []
+      selector:
+        action: {}
+    on_press_3:
+      name: On - Press 3
+      default: []
+      selector:
+        action: {}
+    on_press_4:
+      name: On - Press 4
+      default: []
+      selector:
+        action: {}
+    on_hold:
+      name: On - Hold
+      default: []
+      selector:
+        action: {}
 
-  down_press_1: { name: "Down - Press 1", default: [], selector: { action: {} } }
-  down_press_2: { name: "Down - Press 2", default: [], selector: { action: {} } }
-  down_press_3: { name: "Down - Press 3", default: [], selector: { action: {} } }
-  down_press_4: { name: "Down - Press 4", default: [], selector: { action: {} } }
-  down_hold: { name: "Down - Hold", default: [], selector: { action: {} } }
+    up_press_1:
+      name: Up - Press 1
+      default: []
+      selector:
+        action: {}
+    up_press_2:
+      name: Up - Press 2
+      default: []
+      selector:
+        action: {}
+    up_press_3:
+      name: Up - Press 3
+      default: []
+      selector:
+        action: {}
+    up_press_4:
+      name: Up - Press 4
+      default: []
+      selector:
+        action: {}
+    up_hold:
+      name: Up - Hold
+      default: []
+      selector:
+        action: {}
 
-  off_press_1: { name: "Off - Press 1", default: [], selector: { action: {} } }
-  off_press_2: { name: "Off - Press 2", default: [], selector: { action: {} } }
-  off_press_3: { name: "Off - Press 3", default: [], selector: { action: {} } }
-  off_press_4: { name: "Off - Press 4", default: [], selector: { action: {} } }
-  off_hold: { name: "Off - Hold", default: [], selector: { action: {} } }
+    down_press_1:
+      name: Down - Press 1
+      default: []
+      selector:
+        action: {}
+    down_press_2:
+      name: Down - Press 2
+      default: []
+      selector:
+        action: {}
+    down_press_3:
+      name: Down - Press 3
+      default: []
+      selector:
+        action: {}
+    down_press_4:
+      name: Down - Press 4
+      default: []
+      selector:
+        action: {}
+    down_hold:
+      name: Down - Hold
+      default: []
+      selector:
+        action: {}
+
+    off_press_1:
+      name: Off - Press 1
+      default: []
+      selector:
+        action: {}
+    off_press_2:
+      name: Off - Press 2
+      default: []
+      selector:
+        action: {}
+    off_press_3:
+      name: Off - Press 3
+      default: []
+      selector:
+        action: {}
+    off_press_4:
+      name: Off - Press 4
+      default: []
+      selector:
+        action: {}
+    off_hold:
+      name: Off - Hold
+      default: []
+      selector:
+        action: {}
 
 mode: parallel
 max: 50
@@ -192,7 +292,6 @@ action:
                 sequence: !input off_press_3
               - conditions:
                   - condition: template
-                    value_template: "{{ button == 'off' and count == 4 }}"
+                    value_template: "{{ button == 'off' and count == '4' }}"
                 sequence: !input off_press_4
-
     default: []
