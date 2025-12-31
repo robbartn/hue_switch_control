@@ -1,14 +1,14 @@
 blueprint:
   name: Hue Switch Control
-  description: >
-    v3 Multi-press + hold controller for Philips Hue Dimmer Switch (Hue integration).
-    - Press is mapped to hue_event type=initial_press (short_release ignored)
-    - Hold is mapped to hue_event type=long_press (repeat + long_release ignored)
-    - Multi-press is detected per device + per button within a time window (max 4).
-    Includes optional Logbook logging for debugging.
+  description: 'v4 Multi-press + hold controller for Philips Hue Dimmer Switch (Hue
+    integration). - Press is mapped to hue_event type=initial_press (short_release
+    ignored) - Hold is mapped to hue_event type=long_press (repeat + long_release
+    ignored) - Multi-press is detected per device + per button within a time window
+    (max 4). Includes optional Logbook logging for debugging.
+
+    '
   domain: automation
   source_url: https://raw.githubusercontent.com/robbartn/hue_switch_control/refs/heads/main/hue_switch_control.yaml
-
   input:
     switches:
       name: Hue dimmer switch devices
@@ -17,30 +17,29 @@ blueprint:
         device:
           multiple: true
           filter:
-            - integration: hue
-              manufacturer: "Signify Netherlands B.V."
-              model: "Hue dimmer switch"
-
+          - integration: hue
+            manufacturer: Signify Netherlands B.V.
+            model: Hue dimmer switch
     multi_press_window:
       name: Multi press window (seconds)
       description: Time window to collect repeated presses (per device + button).
       default: 10
       selector:
         number:
-          min: 1
-          max: 20
-          step: 1
+          min: 1.0
+          max: 20.0
+          step: 1.0
           mode: slider
           unit_of_measurement: seconds
-
     debug_logbook:
       name: Debug logging (Logbook)
-      description: >
-        If enabled, writes debug entries to Logbook tied to this automation entity.
+      description: 'If enabled, writes debug entries to Logbook tied to this automation
+        entity.
+
+        '
       default: false
       selector:
         boolean: {}
-
     on_press_1:
       name: On - Press 1
       default: []
@@ -66,7 +65,6 @@ blueprint:
       default: []
       selector:
         action: {}
-
     up_press_1:
       name: Up - Press 1
       default: []
@@ -92,7 +90,6 @@ blueprint:
       default: []
       selector:
         action: {}
-
     down_press_1:
       name: Down - Press 1
       default: []
@@ -118,7 +115,6 @@ blueprint:
       default: []
       selector:
         action: {}
-
     off_press_1:
       name: Off - Press 1
       default: []
@@ -144,19 +140,15 @@ blueprint:
       default: []
       selector:
         action: {}
-
 mode: parallel
 max: 50
-
 trigger:
-  - platform: event
-    event_type: hue_event
-
+- platform: event
+  event_type: hue_event
 variables:
   switches: !input switches
   window_s: !input multi_press_window
   debug_logbook: !input debug_logbook
-
 action:
   - variables:
       d: "{{ trigger.event.data }}"
@@ -165,20 +157,16 @@ action:
       subtype_raw: "{{ d.subtype | default('', true) }}"
       button: >-
         {% set s = subtype_raw %}
-        {% if s in [1, '1', 'on', 'turn_on', 'button_1'] %}
-          on
-        {% elif s in [2, '2', 'up', 'dim_up', 'button_2'] %}
-          up
-        {% elif s in [3, '3', 'down', 'dim_down', 'button_3'] %}
-          down
-        {% elif s in [4, '4', 'off', 'turn_off', 'button_4'] %}
-          off
-        {% else %}
-          unknown
+        {% if s in [1, '1', 'on', 'turn_on', 'button_1'] %} on
+        {% elif s in [2, '2', 'up', 'dim_up', 'button_2'] %} up
+        {% elif s in [3, '3', 'down', 'dim_down', 'button_3'] %} down
+        {% elif s in [4, '4', 'off', 'turn_off', 'button_4'] %} off
+        {% else %} unknown
         {% endif %}
       _allowed: >-
         {{ device_id != '' and (switches | default([])) is iterable and device_id in switches and button != 'unknown' }}
 
+  # Debug: always log received event (optional)
   - choose:
       - conditions:
           - condition: template
@@ -188,10 +176,12 @@ action:
             data:
               name: "Hue Switch Control"
               message: >-
-                Event received: device_id={{ device_id }}, type={{ press_type }},
+                Event: device_id={{ device_id }}, type={{ press_type }},
                 subtype={{ subtype_raw }}, button={{ button }}, allowed={{ _allowed }}
               entity_id: "{{ this.entity_id }}"
+    default: []
 
+  # Main routing
   - choose:
       - conditions:
           - condition: template
@@ -211,8 +201,9 @@ action:
                           - service: logbook.log
                             data:
                               name: "Hue Switch Control"
-                              message: "Hold detected: button={{ button }}"
+                              message: "Hold: button={{ button }}"
                               entity_id: "{{ this.entity_id }}"
+                    default: []
 
                   - choose:
                       - conditions:
@@ -231,6 +222,7 @@ action:
                           - condition: template
                             value_template: "{{ button == 'off' }}"
                         sequence: !input off_hold
+                    default: []
 
               # PRESS (multi-press)
               - conditions:
@@ -248,8 +240,9 @@ action:
                           - service: logbook.log
                             data:
                               name: "Hue Switch Control"
-                              message: "Press started: button={{ button }}, count={{ count }}, window={{ window_s }}s"
+                              message: "Press start: button={{ button }}, window={{ window_s }}s"
                               entity_id: "{{ this.entity_id }}"
+                    default: []
 
                   - repeat:
                       sequence:
@@ -274,47 +267,11 @@ action:
                               sequence:
                                 - variables:
                                     count: "{{ count + 1 }}"
-                                - choose:
-                                    - conditions:
-                                        - condition: template
-                                          value_template: "{{ debug_logbook }}"
-                                      sequence:
-                                        - service: logbook.log
-                                          data:
-                                            name: "Hue Switch Control"
-                                            message: "Additional press matched: count={{ count }}"
-                                            entity_id: "{{ this.entity_id }}"
-                            - conditions:
-                                - condition: template
-                                  value_template: "{{ wait.trigger is not none }}"
-                              sequence:
-                                - choose:
-                                    - conditions:
-                                        - condition: template
-                                          value_template: "{{ debug_logbook }}"
-                                      sequence:
-                                        - service: logbook.log
-                                          data:
-                                            name: "Hue Switch Control"
-                                            message: >-
-                                              Additional press ignored (different device/button):
-                                              got device_id={{ wait.trigger.event.data.device_id }},
-                                              subtype={{ wait.trigger.event.data.subtype }}
-                                            entity_id: "{{ this.entity_id }}"
                             - conditions:
                                 - condition: template
                                   value_template: "{{ wait.trigger is none }}"
-                              sequence:
-                                - choose:
-                                    - conditions:
-                                        - condition: template
-                                          value_template: "{{ debug_logbook }}"
-                                      sequence:
-                                        - service: logbook.log
-                                          data:
-                                            name: "Hue Switch Control"
-                                            message: "Multi-press window ended: final count={{ count }}"
-                                            entity_id: "{{ this.entity_id }}"
+                              sequence: []
+                          default: []
                       until:
                         - condition: template
                           value_template: "{{ wait.trigger is none or count >= 4 }}"
@@ -327,8 +284,9 @@ action:
                           - service: logbook.log
                             data:
                               name: "Hue Switch Control"
-                              message: "Executing action: button={{ button }}, count={{ count }}"
+                              message: "Press final: button={{ button }}, count={{ count }}"
                               entity_id: "{{ this.entity_id }}"
+                    default: []
 
                   - choose:
                       - conditions:
@@ -398,16 +356,19 @@ action:
                           - condition: template
                             value_template: "{{ button == 'off' and count == 4 }}"
                         sequence: !input off_press_4
-        default:
-          - choose:
-              - conditions:
-                  - condition: template
-                    value_template: "{{ debug_logbook }}"
-                sequence:
-                  - service: logbook.log
-                    data:
-                      name: "Hue Switch Control"
-                      message: >-
-                        Ignored event (filtered): device_id={{ device_id }},
-                        type={{ press_type }}, subtype={{ subtype_raw }}, button={{ button }}
-                      entity_id: "{{ this.entity_id }}"
+                    default: []
+            default: []
+    default:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ debug_logbook }}"
+            sequence:
+              - service: logbook.log
+                data:
+                  name: "Hue Switch Control"
+                  message: >-
+                    Ignored (filtered): device_id={{ device_id }}, type={{ press_type }},
+                    subtype={{ subtype_raw }}, button={{ button }}
+                  entity_id: "{{ this.entity_id }}"
+        default: []
