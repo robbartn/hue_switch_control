@@ -1,10 +1,11 @@
 blueprint:
   name: Hue Switch Control
   description: >
-    v2 Multi-press + hold controller for Philips Hue Dimmer Switch (Hue integration).
+    v3 Multi-press + hold controller for Philips Hue Dimmer Switch (Hue integration).
     - Press is mapped to hue_event type=initial_press (short_release ignored)
     - Hold is mapped to hue_event type=long_press (repeat + long_release ignored)
     - Multi-press is detected per device + per button within a time window (max 4).
+    Includes optional Logbook logging for debugging.
   domain: automation
   source_url: https://raw.githubusercontent.com/robbartn/hue_switch_control/refs/heads/main/hue_switch_control.yaml
 
@@ -31,6 +32,14 @@ blueprint:
           step: 1
           mode: slider
           unit_of_measurement: seconds
+
+    debug_logbook:
+      name: Debug logging (Logbook)
+      description: >
+        If enabled, writes debug entries to Logbook tied to this automation entity.
+      default: false
+      selector:
+        boolean: {}
 
     on_press_1:
       name: On - Press 1
@@ -146,6 +155,7 @@ trigger:
 variables:
   switches: !input switches
   window_s: !input multi_press_window
+  debug_logbook: !input debug_logbook
 
 action:
   - variables:
@@ -166,132 +176,238 @@ action:
         {% else %}
           unknown
         {% endif %}
-
-  - condition: template
-    value_template: >-
-      {{ device_id != '' and (switches | default([])) is iterable and device_id in switches and button != 'unknown' }}
+      _allowed: >-
+        {{ device_id != '' and (switches | default([])) is iterable and device_id in switches and button != 'unknown' }}
 
   - choose:
       - conditions:
           - condition: template
-            value_template: "{{ press_type == 'long_press' }}"
+            value_template: "{{ debug_logbook }}"
         sequence:
-          - choose:
-              - conditions:
-                  - condition: template
-                    value_template: "{{ button == 'on' }}"
-                sequence: !input on_hold
-              - conditions:
-                  - condition: template
-                    value_template: "{{ button == 'up' }}"
-                sequence: !input up_hold
-              - conditions:
-                  - condition: template
-                    value_template: "{{ button == 'down' }}"
-                sequence: !input down_hold
-              - conditions:
-                  - condition: template
-                    value_template: "{{ button == 'off' }}"
-                sequence: !input off_hold
+          - service: logbook.log
+            data:
+              name: "Hue Switch Control"
+              message: >-
+                Event received: device_id={{ device_id }}, type={{ press_type }},
+                subtype={{ subtype_raw }}, button={{ button }}, allowed={{ _allowed }}
+              entity_id: "{{ this.entity_id }}"
 
+  - choose:
       - conditions:
           - condition: template
-            value_template: "{{ press_type == 'initial_press' }}"
+            value_template: "{{ _allowed }}"
         sequence:
-          - variables:
-              count: 1
+          - choose:
+              # HOLD
+              - conditions:
+                  - condition: template
+                    value_template: "{{ press_type == 'long_press' }}"
+                sequence:
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ debug_logbook }}"
+                        sequence:
+                          - service: logbook.log
+                            data:
+                              name: "Hue Switch Control"
+                              message: "Hold detected: button={{ button }}"
+                              entity_id: "{{ this.entity_id }}"
 
-          - repeat:
-              while:
-                - condition: template
-                  value_template: "{{ count < 4 }}"
-              sequence:
-                - wait_for_trigger:
-                    - platform: event
-                      event_type: hue_event
-                      event_data:
-                        type: initial_press
-                  timeout:
-                    seconds: "{{ window_s }}"
-                  continue_on_timeout: false
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ button == 'on' }}"
+                        sequence: !input on_hold
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ button == 'up' }}"
+                        sequence: !input up_hold
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ button == 'down' }}"
+                        sequence: !input down_hold
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ button == 'off' }}"
+                        sequence: !input off_hold
 
-                - condition: template
-                  value_template: >-
-                    {{
-                      wait.trigger is not none and
-                      wait.trigger.event.data.device_id == device_id and
-                      wait.trigger.event.data.subtype == subtype_raw
-                    }}
+              # PRESS (multi-press)
+              - conditions:
+                  - condition: template
+                    value_template: "{{ press_type == 'initial_press' }}"
+                sequence:
+                  - variables:
+                      count: 1
 
-                - variables:
-                    count: "{{ count + 1 }}"
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ debug_logbook }}"
+                        sequence:
+                          - service: logbook.log
+                            data:
+                              name: "Hue Switch Control"
+                              message: "Press started: button={{ button }}, count={{ count }}, window={{ window_s }}s"
+                              entity_id: "{{ this.entity_id }}"
 
+                  - repeat:
+                      sequence:
+                        - wait_for_trigger:
+                            - platform: event
+                              event_type: hue_event
+                              event_data:
+                                type: initial_press
+                          timeout:
+                            seconds: "{{ window_s | int }}"
+                          continue_on_timeout: true
+
+                        - choose:
+                            - conditions:
+                                - condition: template
+                                  value_template: >-
+                                    {{
+                                      wait.trigger is not none and
+                                      wait.trigger.event.data.device_id == device_id and
+                                      wait.trigger.event.data.subtype == subtype_raw
+                                    }}
+                              sequence:
+                                - variables:
+                                    count: "{{ count + 1 }}"
+                                - choose:
+                                    - conditions:
+                                        - condition: template
+                                          value_template: "{{ debug_logbook }}"
+                                      sequence:
+                                        - service: logbook.log
+                                          data:
+                                            name: "Hue Switch Control"
+                                            message: "Additional press matched: count={{ count }}"
+                                            entity_id: "{{ this.entity_id }}"
+                            - conditions:
+                                - condition: template
+                                  value_template: "{{ wait.trigger is not none }}"
+                              sequence:
+                                - choose:
+                                    - conditions:
+                                        - condition: template
+                                          value_template: "{{ debug_logbook }}"
+                                      sequence:
+                                        - service: logbook.log
+                                          data:
+                                            name: "Hue Switch Control"
+                                            message: >-
+                                              Additional press ignored (different device/button):
+                                              got device_id={{ wait.trigger.event.data.device_id }},
+                                              subtype={{ wait.trigger.event.data.subtype }}
+                                            entity_id: "{{ this.entity_id }}"
+                            - conditions:
+                                - condition: template
+                                  value_template: "{{ wait.trigger is none }}"
+                              sequence:
+                                - choose:
+                                    - conditions:
+                                        - condition: template
+                                          value_template: "{{ debug_logbook }}"
+                                      sequence:
+                                        - service: logbook.log
+                                          data:
+                                            name: "Hue Switch Control"
+                                            message: "Multi-press window ended: final count={{ count }}"
+                                            entity_id: "{{ this.entity_id }}"
+                      until:
+                        - condition: template
+                          value_template: "{{ wait.trigger is none or count >= 4 }}"
+
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ debug_logbook }}"
+                        sequence:
+                          - service: logbook.log
+                            data:
+                              name: "Hue Switch Control"
+                              message: "Executing action: button={{ button }}, count={{ count }}"
+                              entity_id: "{{ this.entity_id }}"
+
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ button == 'on' and count == 1 }}"
+                        sequence: !input on_press_1
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ button == 'on' and count == 2 }}"
+                        sequence: !input on_press_2
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ button == 'on' and count == 3 }}"
+                        sequence: !input on_press_3
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ button == 'on' and count == 4 }}"
+                        sequence: !input on_press_4
+
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ button == 'up' and count == 1 }}"
+                        sequence: !input up_press_1
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ button == 'up' and count == 2 }}"
+                        sequence: !input up_press_2
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ button == 'up' and count == 3 }}"
+                        sequence: !input up_press_3
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ button == 'up' and count == 4 }}"
+                        sequence: !input up_press_4
+
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ button == 'down' and count == 1 }}"
+                        sequence: !input down_press_1
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ button == 'down' and count == 2 }}"
+                        sequence: !input down_press_2
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ button == 'down' and count == 3 }}"
+                        sequence: !input down_press_3
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ button == 'down' and count == 4 }}"
+                        sequence: !input down_press_4
+
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ button == 'off' and count == 1 }}"
+                        sequence: !input off_press_1
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ button == 'off' and count == 2 }}"
+                        sequence: !input off_press_2
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ button == 'off' and count == 3 }}"
+                        sequence: !input off_press_3
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ button == 'off' and count == 4 }}"
+                        sequence: !input off_press_4
+        default:
           - choose:
               - conditions:
                   - condition: template
-                    value_template: "{{ button == 'on' and count == 1 }}"
-                sequence: !input on_press_1
-              - conditions:
-                  - condition: template
-                    value_template: "{{ button == 'on' and count == 2 }}"
-                sequence: !input on_press_2
-              - conditions:
-                  - condition: template
-                    value_template: "{{ button == 'on' and count == 3 }}"
-                sequence: !input on_press_3
-              - conditions:
-                  - condition: template
-                    value_template: "{{ button == 'on' and count == 4 }}"
-                sequence: !input on_press_4
-
-              - conditions:
-                  - condition: template
-                    value_template: "{{ button == 'up' and count == 1 }}"
-                sequence: !input up_press_1
-              - conditions:
-                  - condition: template
-                    value_template: "{{ button == 'up' and count == 2 }}"
-                sequence: !input up_press_2
-              - conditions:
-                  - condition: template
-                    value_template: "{{ button == 'up' and count == 3 }}"
-                sequence: !input up_press_3
-              - conditions:
-                  - condition: template
-                    value_template: "{{ button == 'up' and count == 4 }}"
-                sequence: !input up_press_4
-
-              - conditions:
-                  - condition: template
-                    value_template: "{{ button == 'down' and count == 1 }}"
-                sequence: !input down_press_1
-              - conditions:
-                  - condition: template
-                    value_template: "{{ button == 'down' and count == 2 }}"
-                sequence: !input down_press_2
-              - conditions:
-                  - condition: template
-                    value_template: "{{ button == 'down' and count == 3 }}"
-                sequence: !input down_press_3
-              - conditions:
-                  - condition: template
-                    value_template: "{{ button == 'down' and count == 4 }}"
-                sequence: !input down_press_4
-
-              - conditions:
-                  - condition: template
-                    value_template: "{{ button == 'off' and count == 1 }}"
-                sequence: !input off_press_1
-              - conditions:
-                  - condition: template
-                    value_template: "{{ button == 'off' and count == 2 }}"
-                sequence: !input off_press_2
-              - conditions:
-                  - condition: template
-                    value_template: "{{ button == 'off' and count == 3 }}"
-                sequence: !input off_press_3
-              - conditions:
-                  - condition: template
-                    value_template: "{{ button == 'off' and count == '4' }}"
-                sequence: !input off_press_4
-    default: []
+                    value_template: "{{ debug_logbook }}"
+                sequence:
+                  - service: logbook.log
+                    data:
+                      name: "Hue Switch Control"
+                      message: >-
+                        Ignored event (filtered): device_id={{ device_id }},
+                        type={{ press_type }}, subtype={{ subtype_raw }}, button={{ button }}
+                      entity_id: "{{ this.entity_id }}"
